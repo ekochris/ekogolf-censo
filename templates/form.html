@@ -20,6 +20,45 @@
         .navbar-brand img { height: 50px; }
         .logo-container { text-align: center; margin-bottom: 20px; }
         .logo-container img { height: 80px; }
+
+        /* Banner de carga Ekogolf */
+        #loading-banner {
+            position: fixed;
+            z-index: 9999;
+            background-color: white;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: #2c572d;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #loading-banner .logo {
+            width: 100px;
+            margin-bottom: 20px;
+        }
+
+        #loading-banner .spinner {
+            margin-top: 20px;
+            border: 6px solid #e0e0e0;
+            border-top: 6px solid #2c572d;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         @media (max-width: 576px) {
             .form-container { padding: 20px; }
             h2 { font-size: 1.4rem; }
@@ -27,6 +66,13 @@
     </style>
 </head>
 <body>
+
+<!-- Banner de bienvenida estilo Ekogolf -->
+<div id="loading-banner">
+  <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Ekogolf" class="logo">
+  <p>Bienvenido(a) al sistema de registro de Ekogolf.<br>Un momento por favor, estamos preparando todo para usted...</p>
+  <div class="spinner"></div>
+</div>
 
 <nav class="navbar navbar-expand-lg navbar-dark">
   <div class="container-fluid">
@@ -110,6 +156,12 @@
         </div>
     </div>
 </div>
+
+<script>
+window.addEventListener("load", function () {
+    document.getElementById("loading-banner").style.display = "none";
+});
+</script>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -214,3 +266,4 @@ document.addEventListener("DOMContentLoaded", function () {
 
 </body>
 </html>
+
