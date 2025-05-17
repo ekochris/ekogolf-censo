@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro Ekogolf</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f0f2f5; }
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        .btn-ekogolf { background-color: #6AA84F; color: white; }
+        .btn-ekogolf:hover { background-color: #5ca044; }
+        .navbar { background-color: #6AA84F; }
+        .navbar-brand img { height: 50px; }
+        .logo-container { text-align: center; margin-bottom: 20px; }
+        .logo-container img { height: 80px; }
+        @media (max-width: 576px) {
+            .form-container { padding: 20px; }
+            h2 { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Ekogolf Logo" class="img-fluid">
+    </a>
+  </div>
+</nav>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-sm-12 col-md-10 col-lg-8">
+            <div class="form-container">
+                <div class="logo-container">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Ekogolf Logo" class="img-fluid">
+                </div>
+
+                <h2 class="mb-4 text-center">Formulario de Registro</h2>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <script>
+                            document.addEventListener("DOMContentLoaded", () => {
+                                {% for category, message in messages %}
+                                    Swal.fire({
+                                        icon: "{{ 'success' if category == 'success' else ('error' if category == 'danger' else 'info') }}",
+                                        title: "{{ '¡Éxito!' if category == 'success' else ('Error' if category == 'danger' else 'Aviso') }}",
+                                        text: "{{ message }}",
+                                        confirmButtonColor: "{{ '#6AA84F' if category == 'success' else '#d33' }}"
+                                    });
+                                {% endfor %}
+                            });
+                        </script>
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST" enctype="multipart/form-data" id="formulario-registro">
+                    {{ form.hidden_tag() }}
+                    <div class="row">
+                        <div class="col-md-4 mb-3">{{ form.first_name.label }} {{ form.first_name(class="form-control") }}</div>
+                        <div class="col-md-4 mb-3">{{ form.last_name_p.label }} {{ form.last_name_p(class="form-control") }}</div>
+                        <div class="col-md-4 mb-3">{{ form.last_name_m.label }} {{ form.last_name_m(class="form-control") }}</div>
+                        <div class="col-md-6 mb-3">{{ form.email.label }} {{ form.email(class="form-control") }}</div>
+                        <div class="col-md-6 mb-3">{{ form.phone.label }} {{ form.phone(class="form-control") }}</div>
+                        <div class="col-md-6 mb-3">{{ form.member_number.label }} {{ form.member_number(class="form-control") }}</div>
+                        <div class="col-md-6 mb-3">{{ form.privada.label }} {{ form.privada(class="form-control", id="privada") }}</div>
+                        <div class="col-md-6 mb-3">{{ form.direccion_yvr.label }} {{ form.direccion_yvr(class="form-control", id="direccion_yvr") }}</div>
+                        <div class="col-md-6 mb-3">{{ form.street_number.label }} {{ form.street_number(class="form-control") }}</div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.lote.label }}
+                            {{ form.lote(class="form-control", pattern="\\d{3}[A-Za-z]?", title="Debe ser 3 dígitos o 3 dígitos seguidos de una letra (ej. 123 o 123A)") }}
+                            <div class="form-text text-muted">Ejemplos válidos: <strong>001</strong>, <strong>123A</strong>, <strong>999</strong></div>
+                        </div>
+                        <div class="col-md-6 mb-3">{{ form.id_front.label }} {{ form.id_front(class="form-control") }}</div>
+                        <div class="col-md-6 mb-3">{{ form.id_back.label }} {{ form.id_back(class="form-control") }}</div>
+                        <div class="col-md-6 mb-3">{{ form.num_vehicles.label }} {{ form.num_vehicles(class="form-control", id="num_vehicles") }}</div>
+                    </div>
+
+                    {% for i in range(1, 5) %}
+                    <div class="vehicle-section mb-4" id="vehicle_{{ i }}" style="display: none;">
+                        <h5>Datos del Vehículo {{ i }}</h5>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">{{ form['make_' ~ i].label }} {{ form['make_' ~ i](class="form-control") }}</div>
+                            <div class="col-md-4 mb-3">{{ form['model_' ~ i].label }} {{ form['model_' ~ i](class="form-control") }}</div>
+                            <div class="col-md-4 mb-3">{{ form['year_' ~ i].label }} {{ form['year_' ~ i](class="form-control") }}</div>
+                            <div class="col-md-4 mb-3">{{ form['color_' ~ i].label }} {{ form['color_' ~ i](class="form-control") }}</div>
+                            <div class="col-md-4 mb-3">{{ form['plates_' ~ i].label }} {{ form['plates_' ~ i](class="form-control") }}</div>
+                            <div class="col-md-4 mb-3">{{ form['vin_' ~ i].label }} {{ form['vin_' ~ i](class="form-control") }}</div>
+                            <div class="col-md-4 mb-3">{{ form['photo_rear_' ~ i].label }} {{ form['photo_rear_' ~ i](class="form-control") }}</div>
+                            <div class="col-md-4 mb-3">{{ form['photo_underside_' ~ i].label }} {{ form['photo_underside_' ~ i](class="form-control") }}</div>
+                            <div class="col-md-4 mb-3">{{ form['circulation_card_' ~ i].label }} {{ form['circulation_card_' ~ i](class="form-control") }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-ekogolf btn-lg" id="btn-enviar">Enviar Formulario ✅</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const direccionYvr = document.getElementById('direccion_yvr');
+    const privada = document.getElementById('privada');
+    const numVehiculos = document.getElementById('num_vehicles');
+    const mapeoYVR = {
+        "Paseo del jaguar": "YVR01",
+        "Xpokin peninsula": "YVR03",
+        "Xpokin": "YVR04",
+        "Kilil": "YVR05",
+        "Xkatay": "YVR09",
+        "Serena": "YVR10",
+        "Cutzam": "YVR11",
+        "Tumin": "YVR12",
+        "Toh": "YVR13",
+        "Anthea": "YVR14",
+        "Kanha": "YVR15",
+        "Oasis": "YVR17",
+        "Kutz": "YVR18",
+        "Harmonia": "YVR19",
+        "Cutzam ll": "YVR21"
+    };
+
+    privada.addEventListener('change', () => {  
+        direccionYvr.value = mapeoYVR[privada.value] || '';
+    });
+
+    const mostrarSeccionesVehiculo = () => {
+        let seleccion = parseInt(numVehiculos.value);
+        for (let i = 1; i <= 4; i++) {
+            let section = document.getElementById(`vehicle_${i}`);
+            section.style.display = (i <= seleccion) ? 'block' : 'none';
+        }
+    };
+    numVehiculos.addEventListener('change', mostrarSeccionesVehiculo);
+    mostrarSeccionesVehiculo();
+
+    const formulario = document.getElementById('formulario-registro');
+    const botonEnviar = document.getElementById('btn-enviar');
+
+    formulario.addEventListener('submit', () => {
+        botonEnviar.disabled = true;
+        botonEnviar.innerText = 'Enviando...';
+    });
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const MAX_SIZE_MB = 10;
+    const VALID_EXTENSIONS = ['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp'];
+
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+        input.addEventListener('change', () => {
+            const file = input.files[0];
+            if (!file) return;
+
+            const ext = file.name.split('.').pop().toLowerCase();
+            const sizeMB = file.size / (1024 * 1024);
+
+            if (!VALID_EXTENSIONS.includes(ext)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Archivo no permitido',
+                    text: `El archivo "${file.name}" no es un formato de imagen permitido.`
+                });
+                input.value = '';
+            } else if (sizeMB > MAX_SIZE_MB) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Archivo demasiado grande',
+                    text: `El archivo "${file.name}" excede los ${MAX_SIZE_MB} MB permitidos.`
+                });
+                input.value = '';
+            }
+        });
+    });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("formulario-registro");
+
+    form.addEventListener("submit", function (e) {
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Formulario incompleto',
+                text: 'Por favor completa todos los campos requeridos correctamente.',
+                confirmButtonColor: '#d33'
+            });
+        }
+
+        form.classList.add('was-validated');
+    });
+});
+</script>
+
+</body>
+</html>

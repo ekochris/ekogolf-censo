@@ -1,0 +1,175 @@
+<!-- templates/registros.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registros - Ekogolf</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #e7f2eb;
+        }
+        .navbar {
+            background-color: #6AA84F;
+        }
+        .navbar-brand img {
+            height: 45px;
+        }
+        .btn-ekogolf {
+            background-color: #6AA84F;
+            color: white;
+        }
+        .btn-ekogolf:hover {
+            background-color: #5ca044;
+            color: white;
+        }
+        .table thead th {
+            background-color: #6AA84F;
+            color: white;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-top: 40px;
+            margin-bottom: 40px;
+        }
+        .logo-ekogolf {
+            display: block;
+            margin: 0 auto 20px auto;
+            max-height: 100px;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Ekogolf Logo">
+    </a>
+    <div class="ms-auto">
+        {% if session.get('user_role') == 'admin' %}
+            <a href="{{ url_for('main.agregar_usuario') }}" class="btn btn-ekogolf me-2">➕ Agregar Usuario</a>
+        {% endif %}
+        <a href="{{ url_for('main.logout') }}" class="btn btn-danger">Cerrar sesión</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Ekogolf Logo" class="logo-ekogolf">
+    <h2 class="mb-4 text-center">Registros de Residentes</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="mb-3">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <form method="get" action="{{ url_for('main.ver_registros') }}" class="row g-3 mb-4">
+        <div class="col-auto">
+            <label for="fecha" class="form-label">Filtrar por fecha:</label>
+            <input type="date" id="fecha" name="fecha" class="form-control" value="{{ fecha_filtro }}">
+        </div>
+        <div class="col-auto d-flex align-items-end">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+        </div>
+        <div class="col-auto d-flex align-items-end">
+            <a href="{{ url_for('main.ver_registros') }}" class="btn btn-secondary">Ver todos</a>
+        </div>
+        <div class="col-auto d-flex align-items-end ms-auto">
+            <a href="{{ url_for('main.exportar_excel') }}" class="btn btn-success">📥 Exportar Excel</a>
+        </div>
+    </form>
+
+    <div class="mb-4">
+        <input type="text" id="searchInput" class="form-control" placeholder="🔎 Buscar por nombre, correo, privada o placas.">
+    </div>
+
+    <div class="table-responsive">
+        <table id="registrosTable" class="table table-striped table-bordered align-middle text-center">
+            <thead>
+                <tr>
+                    <th>Nombre Completo</th>
+                    <th>Correo</th>
+                    <th>Teléfono</th>
+                    <th>Socio</th>
+                    <th>Dirección</th>
+                    <th>Privada</th>
+                    <th>Vehículos</th>
+                    <th>INE Frente</th>
+                    <th>INE Reverso</th>
+                    <th>PDF</th>
+                    <th>Fecha</th>
+                    {% if session.get('user_role') == 'admin' %}
+                    <th>Acción</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in residentes %}
+                <tr>
+                    <td>{{ r.first_name }} {{ r.last_name_p }} {{ r.last_name_m }}</td>
+                    <td>{{ r.email }}</td>
+                    <td>{{ r.phone }}</td>
+                    <td>{{ r.member_number }}</td>
+                    <td>{{ r.direccion_yvr }}{% if r.street_number %}-{{ r.street_number }}{% endif %}-{{ r.lote }}</td>
+                    <td>{{ r.privada }}</td>
+                    <td>
+                        {% for v in r.vehicles %}
+                            <div>
+                                <strong>{{ v.make }} {{ v.model }}</strong><br>
+                                Placas: {{ v.plates }}<br>
+                                Color: {{ v.color }}<br>
+                                <a href="/{{ v.photo_rear }}" target="_blank">Trasera</a> |
+                                <a href="/{{ v.photo_underside }}" target="_blank">Inferior</a> |
+                                <a href="/{{ v.circulation_card }}" target="_blank">Circulación</a>
+                            </div>
+                            {% if not loop.last %}<hr>{% endif %}
+                        {% endfor %}
+                    </td>
+                    <td><a href="/{{ r.id_front|replace('\\\\', '/') }}" target="_blank">Ver</a></td>
+                    <td><a href="/{{ r.id_back|replace('\\\\', '/') }}" target="_blank">Ver</a></td>
+                    <td><a href="{{ url_for('static', filename='pdfs/registro_' ~ r.id ~ '.pdf') }}" target="_blank">📄 PDF</a></td>
+                    <td>{{ r.created_at.strftime('%d/%m/%Y') if r.created_at else 'Sin fecha' }}</td>
+                    {% if session.get('user_role') == 'admin' %}
+                    <td>
+                        <form method="POST" action="{{ url_for('main.eliminar_registro', resident_id=r.id) }}" onsubmit="return confirm('¿Eliminar este registro? Esta acción no se puede deshacer.');">
+                            <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('searchInput');
+    const tableRows = document.querySelectorAll('#registrosTable tbody tr');
+
+    searchInput.addEventListener('keyup', function () {
+        const query = searchInput.value.toLowerCase();
+        tableRows.forEach(row => {
+            const rowText = row.innerText.toLowerCase();
+            row.style.display = rowText.includes(query) ? '' : 'none';
+        });
+    });
+});
+</script>
+
+</body>
+</html>
