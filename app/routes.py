@@ -11,6 +11,10 @@ from datetime import datetime
 from sqlalchemy import func
 from openpyxl import Workbook
 from openpyxl.styles import Font
+from config_cloudinary import cloudinary
+import cloudinary.uploader
+import time
+from cloudinary.utils import cloudinary_url
 
 bp = Blueprint('main', __name__)
 
@@ -20,57 +24,77 @@ def eliminar_archivo(ruta):
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
-    form = RegistroForm()
+    form = ResidentForm()
+
     if form.validate_on_submit():
-        id_front_path = save_file(form.id_front.data, 'ids')
-        id_back_path = save_file(form.id_back.data, 'ids')
-
-        resident = Resident(
-            first_name=form.first_name.data,
-            last_name_p=form.last_name_p.data,
-            last_name_m=form.last_name_m.data,
-            email=form.email.data,
-            phone=form.phone.data,
-            member_number=form.member_number.data,
-            direccion_yvr=form.direccion_yvr.data,
-            privada=form.privada.data,
-            street_number=form.street_number.data,
-            lote=form.lote.data,
-            id_front=id_front_path,
-            id_back=id_back_path,
-            created_at=datetime.utcnow()
-        )
-        db.session.add(resident)
-        db.session.commit()
-
-        num_vehicles = int(form.num_vehicles.data)
-        for i in range(num_vehicles):
-            vehicle = Vehicle(
-                resident_id=resident.id,
-                make=getattr(form, f'make_{i+1}').data,
-                model=getattr(form, f'model_{i+1}').data,
-                year=getattr(form, f'year_{i+1}').data,
-                color=getattr(form, f'color_{i+1}').data,
-                plates=getattr(form, f'plates_{i+1}').data,
-                vin=getattr(form, f'vin_{i+1}').data,
-                photo_rear=save_file(getattr(form, f'photo_rear_{i+1}').data, 'vehicles'),
-                photo_underside=save_file(getattr(form, f'photo_underside_{i+1}').data, 'vehicles'),
-                circulation_card=save_file(getattr(form, f'circulation_card_{i+1}').data, 'vehicles')
+        try:
+            # Guardar residente
+            resident = Resident(
+                first_name=form.first_name.data,
+                last_name_p=form.last_name_p.data,
+                last_name_m=form.last_name_m.data,
+                email=form.email.data,
+                phone=form.phone.data,
+                member_number=form.member_number.data,
+                direccion_yvr=form.direccion_yvr.data,
+                privada=form.privada.data,
+                street_number=form.street_number.data,
+                lote=form.lote.data
             )
-            db.session.add(vehicle)
+            db.session.add(resident)
+            db.session.flush()
 
-        db.session.commit()
+            # Subir INE frente y reverso a Cloudinary
+            id_front_path = upload_to_cloudinary(form.id_front.data, 'ids')
+            id_back_path = upload_to_cloudinary(form.id_back.data, 'ids')
 
-        # Generar PDF
-        output_dir = os.path.join(current_app.static_folder, "pdfs")
-        os.makedirs(output_dir, exist_ok=True)
-        pdf_filename = f"registro_{resident.id}.pdf"
-        pdf_path = os.path.join(output_dir, pdf_filename)
-        logo_path = os.path.join(current_app.static_folder, "images", "logo.png")
-        generar_pdf(resident, resident.vehicles, pdf_path, logo_path if os.path.exists(logo_path) else None)
+            # Validar subida exitosa de INEs
+            if not id_front_path or not id_back_path:
+                raise Exception("Error al subir las imágenes del INE a Cloudinary.")
 
-        flash('Formulario enviado con éxito ✅', 'success')
-        return redirect(url_for('main.gracias'))
+            resident.id_front = id_front_path
+            resident.id_back = id_back_path
+            db.session.commit()
+
+            num_vehicles = int(form.num_vehicles.data)
+            for i in range(num_vehicles):
+                make = getattr(form, f'make_{i+1}').data
+                model = getattr(form, f'model_{i+1}').data
+                year = getattr(form, f'year_{i+1}').data
+                color = getattr(form, f'color_{i+1}').data
+                plates = getattr(form, f'plates_{i+1}').data
+                vin = getattr(form, f'vin_{i+1}').data
+
+                # Subir fotos del vehículo a Cloudinary
+                photo_rear = upload_to_cloudinary(getattr(form, f'photo_rear_{i+1}').data, 'vehicles')
+                photo_underside = upload_to_cloudinary(getattr(form, f'photo_underside_{i+1}').data, 'vehicles')
+                circulation_card = upload_to_cloudinary(getattr(form, f'circulation_card_{i+1}').data, 'vehicles')
+
+                # Validar que las 3 fotos se subieron correctamente
+                if not photo_rear or not photo_underside or not circulation_card:
+                    raise Exception(f"Error al subir imágenes del vehículo {i+1} a Cloudinary.")
+
+                vehicle = Vehicle(
+                    resident_id=resident.id,
+                    make=make,
+                    model=model,
+                    year=year,
+                    color=color,
+                    plates=plates,
+                    vin=vin,
+                    photo_rear=photo_rear,
+                    photo_underside=photo_underside,
+                    circulation_card=circulation_card
+                )
+                db.session.add(vehicle)
+
+            db.session.commit()
+            flash('Formulario enviado correctamente ✅', 'success')
+            return redirect(url_for('main.gracias'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Ocurrió un error inesperado: {e}", 'danger')
 
     return render_template('form.html', form=form)
 
@@ -147,7 +171,12 @@ def ver_registros():
     else:
         residentes = Resident.query.all()
 
-    return render_template('registros.html', residentes=residentes, fecha_filtro=fecha_str)
+    return render_template(
+        'registros.html',
+        residentes=residentes,
+        fecha_filtro=fecha_str,
+        url_firmada_temporal=url_firmada_temporal  # <-- Pasamos la función a Jinja
+    )
 
 @bp.route('/exportar_excel')
 def exportar_excel():
@@ -168,9 +197,9 @@ def exportar_excel():
     ]
     ws.append(headers)
 
-    def crear_link(ruta_relativa):
-        if ruta_relativa:
-            return f'=HYPERLINK("http://localhost:8080/{ruta_relativa}", "Ver")'
+    def crear_link(url):
+        if url:
+            return f'=HYPERLINK("{url}", "Ver")'
         return ''
 
     for r in residentes:
@@ -188,12 +217,12 @@ def exportar_excel():
                     v.make,
                     v.model,
                     v.color,
-                    crear_link(r.id_front),
-                    crear_link(r.id_back),
-                    crear_link(v.photo_rear),
-                    crear_link(v.photo_underside),
-                    crear_link(v.circulation_card),
-                    crear_link(f"static/pdfs/registro_{r.id}.pdf"),
+                    crear_link(url_firmada_temporal(r.id_front)),
+                    crear_link(url_firmada_temporal(r.id_back)),
+                    crear_link(url_firmada_temporal(v.photo_rear)),
+                    crear_link(url_firmada_temporal(v.photo_underside)),
+                    crear_link(url_firmada_temporal(v.circulation_card)),
+                    crear_link(f"http://localhost:8080/static/pdfs/registro_{r.id}.pdf"),
                     r.created_at.strftime('%d/%m/%Y %H:%M:%S') if r.created_at else ''
                 ]
                 ws.append(row)
@@ -206,10 +235,10 @@ def exportar_excel():
                 direccion_completa,
                 r.privada,
                 '', '', '', '',
-                crear_link(r.id_front),
-                crear_link(r.id_back),
+                crear_link(url_firmada_temporal(r.id_front)),
+                crear_link(url_firmada_temporal(r.id_back)),
                 '', '', '',
-                crear_link(f"static/pdfs/registro_{r.id}.pdf"),
+                crear_link(f"http://localhost:8080/static/pdfs/registro_{r.id}.pdf"),
                 r.created_at.strftime('%d/%m/%Y %H:%M:%S') if r.created_at else ''
             ]
             ws.append(row)
@@ -224,7 +253,7 @@ def exportar_excel():
 
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'heic', 'heif', 'webp'}
 
-def save_file(file, folder):
+def upload_to_cloudinary(file, folder):
     if file:
         filename = secure_filename(file.filename)
         ext = filename.rsplit('.', 1)[-1].lower()
@@ -237,11 +266,12 @@ def save_file(file, folder):
         if size > 10 * 1024 * 1024:
             flash(f"❌ El archivo '{filename}' excede los 10 MB.", 'danger')
             return None
-        uploads_dir = os.path.join('static', 'uploads', folder)
-        os.makedirs(uploads_dir, exist_ok=True)
-        filepath = os.path.join(uploads_dir, filename)
-        file.save(filepath)
-        return filepath
+        try:
+            resultado = cloudinary.uploader.upload(file, folder=f"ekogolf/{folder}")
+            return resultado['public_id']  # <-- Guardamos solo el public_id, no la URL completa
+        except Exception as e:
+            flash(f"⚠️ Error al subir '{filename}': {e}", 'danger')
+            return None
     return None
 
 @bp.route('/agregar_usuario', methods=['GET', 'POST'])
@@ -284,3 +314,14 @@ def pagina_no_encontrada(e):
 @bp.route('/gracias')
 def gracias():
     return render_template('gracias.html')
+
+def url_firmada_temporal(public_id, tiempo_segundos=600):
+    expires_at = int(time.time()) + tiempo_segundos
+    url, _ = cloudinary_url(
+        public_id,
+        secure=True,
+        sign_url=True,
+        expires_at=expires_at,
+        resource_type="image" if not public_id.endswith(".pdf") else "raw"
+    )
+    return url

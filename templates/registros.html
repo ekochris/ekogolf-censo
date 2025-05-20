@@ -130,15 +130,23 @@
                                 <strong>{{ v.make }} {{ v.model }}</strong><br>
                                 Placas: {{ v.plates }}<br>
                                 Color: {{ v.color }}<br>
-                                <a href="/{{ v.photo_rear }}" target="_blank">Trasera</a> |
-                                <a href="/{{ v.photo_underside }}" target="_blank">Inferior</a> |
-                                <a href="/{{ v.circulation_card }}" target="_blank">Circulación</a>
+                                <a href="{{ url_firmada_temporal(v.photo_rear) }}" target="_blank">Trasera</a> |
+                                <a href="{{ url_firmada_temporal(v.photo_underside) }}" target="_blank">Inferior</a> |
+                                <a href="{{ url_firmada_temporal(v.circulation_card) }}" target="_blank">Circulación</a>
                             </div>
                             {% if not loop.last %}<hr>{% endif %}
                         {% endfor %}
                     </td>
-                    <td><a href="/{{ r.id_front|replace('\\\\', '/') }}" target="_blank">Ver</a></td>
-                    <td><a href="/{{ r.id_back|replace('\\\\', '/') }}" target="_blank">Ver</a></td>
+                    <td>
+                        {% if r.id_front %}
+                            <a href="{{ url_firmada_temporal(r.id_front) }}" target="_blank">Ver</a>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if r.id_back %}
+                            <a href="{{ url_firmada_temporal(r.id_back) }}" target="_blank">Ver</a>
+                        {% endif %}
+                    </td>
                     <td><a href="{{ url_for('static', filename='pdfs/registro_' ~ r.id ~ '.pdf') }}" target="_blank">📄 PDF</a></td>
                     <td>{{ r.created_at.strftime('%d/%m/%Y') if r.created_at else 'Sin fecha' }}</td>
                     {% if session.get('user_role') == 'admin' %}
