@@ -24,7 +24,7 @@ def eliminar_archivo(ruta):
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
-    form = ResidentForm()
+    form = RegistroForm()  
 
     if form.validate_on_submit():
         try:
